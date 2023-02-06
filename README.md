@@ -1,6 +1,7 @@
 # veryfi_code_challenge
 This repository contains my rendition of the code challenge provided and all its related files.
 
+#### Contents
 1. [Setup](#Setup-)
 2. [Running the notebook](#running-the-notebook-)
 3. [Using the CLI](#using-the-cli-)
