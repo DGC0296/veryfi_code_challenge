@@ -182,3 +182,20 @@ class OCR:
 
     def set_line_items_tax_codes_and_totals(self):
         self._extract_line_items_tax_codes_and_totals()
+
+    def extract(self, file_name):
+        self.set_date()
+        self.set_store_address()
+        self.set_invoice_number()
+        self.set_line_items_SKU_and_description()
+        self.set_line_items_tax_codes_and_totals()
+
+        json_output = {
+            "date": self.date,
+            "store_address": self.store_address,
+            "invoice_number": self.invoice_number,
+            "line_items": self.line_items
+        }
+
+        with open(f'output/{file_name}.json', 'w') as f:
+            f.write(json.dumps(json_output, indent=4))
