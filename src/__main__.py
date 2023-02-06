@@ -14,7 +14,7 @@ def main(argv):
             print("python src -b [-f [<file_name>]]")
             print("""Where:
             -b      Extracts in batch every file within the folder ocr/
-            -f      Is filename for the JSON in ocr/ e.g. ticket1.json""")
+            -f      Is the filename for the JSON in ocr/ e.g. ticket1.json""")
             sys.exit()
         elif opt == "-b":
             ocrs = glob("ocr/*.json")
