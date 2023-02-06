@@ -4,6 +4,27 @@ import json
 import re
 
 
+PATTERNS = {
+    "DATE": r"(?<=[01][0-9]:[0-5]\d).*(([0-2]|(3))(?(3)[01]|\d)/((0|(1))(?(6)[0-2]|[0-9]))/(1|(2))(?(8)0|9)(?(8)[0-3]|[7-9])\d)",
+    "STORE_ADDRESS": {
+        "VALUE": r"(?<=JUMBO).*[^\n]((.*\s)*)(?=VENDEDOR ELECTRO)",
+        "SLICE" :{
+            "START": r'JUMBO'
+        }
+    },
+    "INVOICE_NUMBER": r"(?<=TIQUETE)\s?(J\d{3})\s?(?=(\d{6}))",
+    "SKU": {
+        "VALUE": r"(\d{13})\s?((\w*[^\n])*)",
+        "SLICE": {
+            "START": r"VENDEDOR\s?ELECTRO",
+            "END": r"NRO\.?\s?CUENTA"
+        }
+    },
+    "TAX_CODE": r"(((?<=\d\s)|(?<!.))([A-Z])\n)|(([A-Z])(?=\=))",
+    "TOTAL": lambda arg: r"^(\d*)\s" + "(?=([{}])$)".format(arg)
+}
+
+
 class OCR:
     def __init__(self, input_json):
         self.full_annotation = ""
@@ -34,28 +55,28 @@ class OCR:
             raise Exception("The provided OCR doesn't have any pages.")
 
     def _extract_date(self):
-        pattern = r"(?<=[01][0-9]:[0-5]\d).*(([0-2]|(3))(?(3)[01]|\d)/(0|(1)(?(5)[0-2]|[09]))/(1|(2))(?(7)0|9)(?(7)[0-3]|[7-9])\d)"
+        pattern = PATTERNS["DATE"]
         local_annotation = deepcopy(self.full_annotation)
         local_annotation = local_annotation.replace("\n", "\\n")
         self.date = re.findall(pattern, local_annotation, re.MULTILINE)[0][0]
 
     def _extract_store_address(self):
-        pattern = r"(?<=JUMBO).*[^\n]((.*\s)*)(?=VENDEDOR ELECTRO)"
-        start = { "regex": r'JUMBO'}
+        pattern = PATTERNS["STORE_ADDRESS"]["VALUE"]
+        start = { "regex": PATTERNS["STORE_ADDRESS"]["SLICE"]["START"] }
         end = { "threshold": 10 }
         annotation_slice = self._get_annotation_slice(start_params=start, end_params=end)
         store_address = re.findall(pattern, annotation_slice, re.MULTILINE)[0][1]
         self.store_address = store_address.replace("\n", '')
 
     def _extract_invoice_number(self):
-        pattern = r"(?<=TIQUETE)\s?(J\d{3})\s?(?=(\d{6}))"
+        pattern = PATTERNS["INVOICE_NUMBER"]
         prefix, number = re.findall(pattern, self.full_annotation, re.MULTILINE)[0]
         self.invoice_number = f'{prefix} {number}'
 
     def _extract_line_items_SKU_and_description(self):
-        pattern = r"(\d{13})\s?((\w*[^\n])*)"
-        start = { "regex": r"VENDEDOR\s?ELECTRO" }
-        end = { "regex": r"NRO\.?\s?CUENTA" }
+        pattern = PATTERNS["SKU"]["VALUE"]
+        start = { "regex": PATTERNS["SKU"]["SLICE"]["START"] }
+        end = { "regex": PATTERNS["SKU"]["SLICE"]["END"] }
         annotation_slice = self._get_annotation_slice(start_params=start, end_params=end)
         
         skus = []
@@ -70,8 +91,7 @@ class OCR:
 
     def _extract_line_items_tax_codes_and_totals(self):
         tax_codes_pattern = ''.join(self.known_tax_codes)
-        look_ahead = f'(?=([{tax_codes_pattern}])$)'
-        pattern = r"^(\d*)\s" + look_ahead
+        pattern = PATTERNS["TOTAL"](tax_codes_pattern)
 
         for i, l in enumerate(self.lines):
             if re.search(pattern, l):
@@ -110,7 +130,7 @@ class OCR:
         self._set_line_items_attribute(tax_codes, "tax_code")
 
     def _find_tax_codes(self):
-        pattern = r"(((?<=\d\s)|(?<!.))([A-Z])\n)|(([A-Z])(?=\=))"
+        pattern = PATTERNS["TAX_CODE"]
         
         tentative_tax_codes = []
         known_tax_codes = []
